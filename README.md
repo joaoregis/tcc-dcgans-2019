@@ -13,5 +13,3 @@ O notebook baixa o CelebA automaticamente (via `helper.py`) para `/input`.
 - `GANS_FACE.ipynb` — modelo e treino
 - `helper.py` — download e carregamento do dataset
 - `problem_unittests.py` — testes das funções do notebook
-
-Repositório original: https://github.com/MaxwellRibeiro/DCGAN_geracao_faces_humanas
