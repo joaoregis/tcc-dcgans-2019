@@ -1,28 +1,27 @@
 # tcc-dcgans-2019
 
-TCC (2019): DCGAN que gera rostos humanos 28×28 a partir do CelebA. Código original (TF 1.x, notebook) na tag `v2019`.
+TCC (2019): DCGAN que gera rostos humanos, agora em PyTorch + CUDA (resolução 64→128 px, várias bases de faces). Código original (TF 1.x, notebook) na tag `v2019`.
 
 ## Layout
-- `dcgan/` — `config.py` (hiperparâmetros), `data.py` (CelebA), `model.py` (D, G, loss, otimizadores), `train.py` (CLI de treino).
-- `tests/test_dcgan.py` — pytest, sem baixar dados.
-- `docs/` — documentação viva.
+- `dcgan/` — `config.py`, `datasets.py`, `models.py`, `train.py`, `metrics.py` (FID), `tune.py`, `bench.py`.
+- `tests/test_dcgan.py` — pytest. `docs/` — documentação viva (comece por `docs/README.md` e `docs/como-funciona.md`).
 
 ## Ambiente
-Windows, **Python 3.11 + TensorFlow 2.15 (CPU)** em `.venv/` (uv). O código usa `tf.compat.v1` em modo grafo para ser equivalente ao TF 1.x de 2019. Sem Jupyter: tudo roda por scripts. GPU nativa no Windows não é suportada por esse TF; ~0,27 s/passo na CPU (≈2,5 h para 10 épocas).
+Windows, **Python 3.11 + PyTorch 2.11 (CUDA 12.8)** em `.venv/` (uv). GPU RTX 4060 8 GB, 31 GB RAM. Sem Jupyter: tudo por scripts.
+Datasets em **`D:\datasets\faces`** (HDD; via `local.env`, ignorado pelo git) — nunca no `C:` (pouco espaço) nem no repo/OneDrive.
+`torch.compile` não funciona aqui (sem Triton/MSVC).
 
-## Comandos
-Use sempre `.venv\Scripts\python.exe`:
-- `-m pytest -q` — testes (rápidos).
-- `-m dcgan.train --help` — todas as opções (épocas, `--limit-images`, `--max-steps`, `--no-fix-2019-bugs`...).
-- `-m dcgan.data` — baixa o CelebA (~1,4 GB) para `~/datasets/dcgan`.
+## Comandos (sempre `.venv\Scripts\python.exe`)
+`-m pytest -q` · `-m dcgan.bench` · `-m dcgan.datasets --sources celeba --resolution 64` · `-m dcgan.train --help` · `-m dcgan.tune --help`
 
 ## Docs (viva)
-Consulte `docs/README.md` antes de ler o código. **Ao mudar código ou descobrir algo, atualize o doc afetado e acrescente uma linha em `docs/log.md` no mesmo commit.**
+Consulte `docs/README.md` antes de ler o código. **Ao mudar código ou descobrir algo, atualize o doc afetado e acrescente uma linha em `docs/log.md` no mesmo commit.** O usuário quer entender o que foi feito: explique em `docs/`.
 
 ## Regras
-- Não commitar dataset, `runs/`, `.venv/` nem `graphify-out/`.
+- Não commitar dataset, `runs/`, `.venv/`, `local.env`, `graphify-out/`.
 - Rode `pytest` antes de commitar mudanças em `dcgan/`.
-- O comportamento de 2019 é reproduzível com `--no-fix-2019-bugs`; não removê-lo sem pedido.
+- Pedir permissão antes de baixar datasets/pesos (tamanho e fonte) e antes de treinos longos.
+- Hiperparâmetros: decidir por medição (FID × tempo, ver `docs/tuning.md`), não por palpite.
 
 ## graphify
 

@@ -1,78 +1,113 @@
-"""Treino: python -m dcgan.train [--epochs N] [--data-dir DIR] ... (ver --help)."""
-import argparse
+"""Treino: python -m dcgan.train [--resolution 64] [--sources celeba,ffhq] [--epochs N] ... (ver --help)."""
 import dataclasses
 import json
 import time
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
+import torch
+import torch.nn.functional as F
+from torchvision.utils import save_image
 
-from . import data
-from .config import Config
-from .model import generator, model_inputs, model_loss, model_opt, tf1
+from .config import Config, parse_args
+from .datasets import FaceData, Loader
+from .models import EMA, Discriminator, Generator
 
 
-def train(cfg, images):
-    """Treina e devolve a pasta da execução (runs/<timestamp>/ com config.json, losses.csv, samples/, ckpt/)."""
+def make_run_dir(cfg):
     run = Path(cfg.runs_dir) / datetime.now().strftime('%Y-%m-%d_%H%M%S')
     (run / 'samples').mkdir(parents=True)
     (run / 'ckpt').mkdir()
     (run / 'config.json').write_text(json.dumps(dataclasses.asdict(cfg), indent=1))
-    rng = np.random.RandomState(cfg.seed or None)
-    sample_z = rng.uniform(-1, 1, size=(25, cfg.z_dim))  # fixo: amostras comparáveis entre passos
-    channels = images.shape[-1]
-
-    with tf1.Graph().as_default():
-        if cfg.seed:
-            tf1.set_random_seed(cfg.seed)
-        input_real, input_z, _ = model_inputs(data.IMAGE_SIZE, data.IMAGE_SIZE, channels, cfg.z_dim)
-        d_loss, g_loss = model_loss(input_real, input_z, channels, cfg.alpha, cfg.smooth_factor,
-                                    cfg.dropout_rate, d_training=cfg.fix_2019_bugs)
-        d_opt, g_opt = model_opt(d_loss, g_loss, cfg.learning_rate, cfg.beta1)
-        sample_op = generator(input_z, channels, is_train=False, alpha=cfg.alpha, dropout_rate=cfg.dropout_rate)
-        saver = tf1.train.Saver()
-        steps, t0 = 0, time.time()
-        with tf1.Session() as sess, open(run / 'losses.csv', 'w') as log:
-            sess.run(tf1.global_variables_initializer())
-            log.write('epoch,step,d_loss,g_loss\n')
-            for epoch in range(1, cfg.epochs + 1):
-                for batch in data.batches(images, cfg.batch_size, cfg.shuffle, rng):
-                    steps += 1
-                    batch_z = rng.uniform(-1, 1, size=(cfg.batch_size, cfg.z_dim))
-                    sess.run(d_opt, {input_real: batch, input_z: batch_z})
-                    sess.run(g_opt, {input_real: batch, input_z: batch_z})  # UPDATE_OPS da BN do D também dependem do input real
-                    if steps % cfg.print_every == 0:
-                        d, g = sess.run([d_loss, g_loss], {input_real: batch, input_z: batch_z})
-                        log.write(f'{epoch},{steps},{d:.5f},{g:.5f}\n')
-                        log.flush()
-                        print(f'Epoch {epoch}/{cfg.epochs} Step {steps} D {d:.4f} G {g:.4f} ({time.time() - t0:.0f}s)', flush=True)
-                    if steps % cfg.show_every == 0:
-                        grid = data.images_square_grid(sess.run(sample_op, {input_z: sample_z}))
-                        grid.save(run / 'samples' / f'e{epoch:02d}_s{steps:06d}.png')
-                    if cfg.max_steps and steps >= cfg.max_steps:
-                        break
-                saver.save(sess, str(run / 'ckpt' / 'model'), global_step=epoch)
-                if cfg.max_steps and steps >= cfg.max_steps:
-                    break
-            data.images_square_grid(sess.run(sample_op, {input_z: sample_z})).save(run / 'samples' / 'final.png')
-        (run / 'time.txt').write_text(f'{steps} passos em {time.time() - t0:.0f}s\n')
     return run
 
 
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    for f in dataclasses.fields(Config):
-        flag = '--' + f.name.replace('_', '-')
-        if f.type is bool:
-            p.add_argument(flag, default=f.default, action=argparse.BooleanOptionalAction)
-        else:
-            p.add_argument(flag, default=f.default, type=f.type)
-    cfg = Config(**vars(p.parse_args()))
-    images = data.load_celeba(cfg.data_dir, cfg.limit_images)
-    print(f'{len(images)} imagens, dados em {cfg.data_dir}')
-    print('Saída em', train(cfg, images))
+def save_samples(g, z, path):
+    with torch.no_grad():
+        save_image(g(z).float().clamp(-1, 1) * 0.5 + 0.5, path, nrow=int(len(z) ** 0.5), padding=1)
+
+
+def train_step(real, G, D, opt_g, opt_d, cfg, amp):
+    """1 passo de D (real vs. falso) e 1 de G (enganar D). Perda não saturante com suavização unilateral dos rótulos."""
+    bce = F.binary_cross_entropy_with_logits
+    z = torch.randn(real.size(0), cfg.z_dim, 1, 1, device=real.device)
+    with amp:
+        fake = G(z)
+        d_real, d_fake = D(real), D(fake.detach())
+        d_loss = bce(d_real, torch.full_like(d_real, 1 - cfg.label_smooth)) + bce(d_fake, torch.zeros_like(d_fake))
+    opt_d.zero_grad(set_to_none=True)
+    d_loss.backward()
+    opt_d.step()
+    with amp:
+        out = D(fake)  # D já atualizado
+        g_loss = bce(out, torch.ones_like(out))
+    opt_g.zero_grad(set_to_none=True)
+    g_loss.backward()
+    opt_g.step()
+    return d_loss.detach(), g_loss.detach()
+
+
+def train(cfg: Config, data=None):
+    """Treina e devolve a pasta da execução. `data` (FaceData) pode ser injetado em testes."""
+    assert torch.cuda.is_available(), 'GPU CUDA não encontrada'
+    device = torch.device('cuda')
+    if cfg.seed:
+        torch.manual_seed(cfg.seed)
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = True
+
+    data = data or FaceData.load(cfg.sources, cfg.data_dir, cfg.resolution)
+    loader = Loader(data, cfg.batch_size, device, cfg.flip, cfg.seed)
+    G = Generator(cfg.resolution, cfg.z_dim, cfg.g_width).to(device, memory_format=torch.channels_last)
+    D = Discriminator(cfg.resolution, cfg.d_width).to(device, memory_format=torch.channels_last)
+    ema = EMA(G, cfg.ema) if cfg.ema else None
+    opt_g = torch.optim.Adam(G.parameters(), cfg.lr_g, betas=(cfg.beta1, cfg.beta2))
+    opt_d = torch.optim.Adam(D.parameters(), cfg.lr_d, betas=(cfg.beta1, cfg.beta2))
+    step, epoch0 = 0, 0
+    if cfg.resume:
+        ck = torch.load(cfg.resume, map_location=device)
+        G.load_state_dict(ck['G']); D.load_state_dict(ck['D'])
+        opt_g.load_state_dict(ck['opt_g']); opt_d.load_state_dict(ck['opt_d'])
+        if ema: ema.model.load_state_dict(ck['ema'])
+        step, epoch0 = ck['step'], ck['epoch']
+
+    run = make_run_dir(cfg)
+    sample_z = torch.randn(64, cfg.z_dim, 1, 1, device=device)
+    amp = torch.autocast('cuda', torch.bfloat16, enabled=cfg.amp)
+    print(f'{len(data)} imagens | {cfg.resolution}px | G {sum(p.numel() for p in G.parameters()) / 1e6:.1f}M '
+          f'D {sum(p.numel() for p in D.parameters()) / 1e6:.1f}M parâmetros | saída: {run}', flush=True)
+
+    t0, t_log, deadline = time.time(), time.time(), cfg.max_minutes * 60
+    with open(run / 'losses.csv', 'w') as log:
+        log.write('epoch,step,d_loss,g_loss,img_per_s\n')
+        for epoch in range(epoch0 + 1, cfg.epochs + 1):
+            for real in loader:
+                d_loss, g_loss = train_step(real, G, D, opt_g, opt_d, cfg, amp)
+                step += 1
+                if ema:
+                    ema.update(G, step)
+                if step % cfg.log_every == 0:
+                    ips = cfg.log_every * cfg.batch_size / (time.time() - t_log)  # (sincroniza a GPU via .item())
+                    d, g = d_loss.item(), g_loss.item()
+                    t_log = time.time()
+                    log.write(f'{epoch},{step},{d:.4f},{g:.4f},{ips:.0f}\n'); log.flush()
+                    print(f'ep {epoch}/{cfg.epochs} passo {step} D {d:.3f} G {g:.3f} {ips:.0f} img/s ({(time.time() - t0) / 60:.1f} min)', flush=True)
+                if step % cfg.sample_every == 0:
+                    save_samples(ema.model if ema else G.eval(), sample_z, run / 'samples' / f'{step:07d}.png')
+                    G.train()
+                if deadline and time.time() - t0 > deadline:
+                    break
+            if epoch % cfg.ckpt_every == 0 or (deadline and time.time() - t0 > deadline):
+                torch.save({'G': G.state_dict(), 'D': D.state_dict(), 'ema': ema.model.state_dict() if ema else None,
+                            'opt_g': opt_g.state_dict(), 'opt_d': opt_d.state_dict(), 'step': step, 'epoch': epoch,
+                            'config': dataclasses.asdict(cfg)}, run / 'ckpt' / f'epoch_{epoch:03d}.pt')
+            if deadline and time.time() - t0 > deadline:
+                print('Limite de tempo atingido.')
+                break
+    save_samples(ema.model if ema else G.eval(), sample_z, run / 'samples' / 'final.png')
+    (run / 'time.txt').write_text(f'{step} passos em {time.time() - t0:.0f}s\n')
+    return run
 
 
 if __name__ == '__main__':
-    main()
+    print('Saída em', train(parse_args(description=__doc__)))

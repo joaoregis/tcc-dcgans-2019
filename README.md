@@ -1,25 +1,22 @@
 # tcc-dcgans-2019
 
-Geração de faces humanas com DCGAN (TensorFlow) treinada no CelebA — TCC, 2019.
-O código original (TF 1.x, notebook) está preservado na tag `v2019`.
+Geração de faces humanas com DCGAN (PyTorch + CUDA), treinada em CelebA e outras bases — TCC, 2019, modernizado.
+O código original (TF 1.x, notebook) está preservado na tag `v2019`. Documentação: [docs/](docs/README.md).
 
-## Ambiente (Windows, CPU)
+## Ambiente (Windows + GPU NVIDIA)
 ```powershell
 uv venv --python 3.11 .venv
+uv pip install --python .venv\Scripts\python.exe torch torchvision --index-url https://download.pytorch.org/whl/cu128
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 ```
+Crie `local.env` com `DCGAN_DATA_DIR=D:\datasets\faces` (pasta dos datasets, fora do repo).
 
 ## Uso
 ```powershell
-.venv\Scripts\python.exe -m pytest -q                       # testes rápidos (sem baixar nada)
-.venv\Scripts\python.exe -m dcgan.data                      # baixa o CelebA (~1,4 GB) e cria o cache 28x28
-.venv\Scripts\python.exe -m dcgan.train                      # treino completo (10 épocas)
-.venv\Scripts\python.exe -m dcgan.train --epochs 1 --limit-images 6400 --max-steps 100   # teste curto
-.venv\Scripts\python.exe -m dcgan.train --no-fix-2019-bugs   # reproduz o comportamento de 2019
+.venv\Scripts\python.exe -m pytest -q                                          # testes
+.venv\Scripts\python.exe -m dcgan.bench --resolution 64                         # velocidade da GPU
+.venv\Scripts\python.exe -m dcgan.datasets --sources celeba --resolution 64     # baixa e pré-processa
+.venv\Scripts\python.exe -m dcgan.train --sources celeba --resolution 64        # treina
+.venv\Scripts\python.exe -m dcgan.tune --minutes 6 --grid "batch_size=128,256"  # ajusta hiperparâmetros (FID)
 ```
-O dataset fica em `~/datasets/dcgan` (ou `DCGAN_DATA_DIR`), fora do repo. Cada treino cria `runs/<data>/` com `config.json`, `losses.csv`, `samples/*.png` e `ckpt/`.
-
-## Estrutura
-- `dcgan/` — `config.py`, `data.py`, `model.py`, `train.py`
-- `tests/` — testes pytest
-- `docs/` — documentação viva (comece por `docs/README.md`)
+Cada treino cria `runs/<data>/` com `config.json`, `losses.csv`, `samples/*.png` e `ckpt/`.

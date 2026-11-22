@@ -1,24 +1,31 @@
 # docs/ — documentação viva do projeto
 
-Consulte aqui **antes** de ler o código.
+Consulte aqui **antes** de ler o código. Se é a primeira vez: leia [como-funciona.md](como-funciona.md), depois [migracao.md](migracao.md).
 
-| Doc | Cobre |
+| Doc | Para quê |
 |---|---|
-| [modelo.md](modelo.md) | `dcgan/model.py` e `dcgan/config.py`: arquitetura, loss, otimizadores, hiperparâmetros |
-| [dados.md](dados.md) | `dcgan/data.py`: download, cache 28×28, lotes, grade de imagens |
-| [treino.md](treino.md) | `dcgan/train.py`: loop, saídas em `runs/`, CLI, desempenho na CPU |
+| [como-funciona.md](como-funciona.md) | **Comece aqui.** Explicação didática: o que é um DCGAN, o caminho de um dado do disco até a imagem gerada, arquivo por arquivo |
+| [migracao.md](migracao.md) | O que mudou em relação ao código de 2019 (e por quê), item por item |
+| [modelo.md](modelo.md) | `dcgan/models.py`: arquitetura, resolução, EMA, perda |
+| [dados.md](dados.md) | `dcgan/datasets.py`: fontes, pré-processamento, cache, mistura, lotes; como adicionar um dataset |
+| [treino.md](treino.md) | `dcgan/train.py` e `dcgan/config.py`: o passo de treino, flags, saídas em `runs/`, como retomar |
+| [desempenho.md](desempenho.md) | Medições na RTX 4060, o que acelerou e o que não funcionou |
+| [tuning.md](tuning.md) | Como ajustamos batch/lr/épocas (tempo × qualidade): método, FID, resultados |
 | [testes.md](testes.md) | `tests/test_dcgan.py` |
-| [quirks.md](quirks.md) | Bugs do código de 2019 (corrigidos ou não) e pendências |
+| [quirks.md](quirks.md) | Bugs do código de 2019 e pendências |
 | [log.md](log.md) | Histórico de mudanças e decisões, mais recente primeiro |
 
-## Fluxo
-`data.load_celeba` baixa o CelebA e gera o cache uint8 `(N,28,28,3)` → `data.batches` entrega lotes em [-1, 1] →
-`train.train` constrói o grafo (`model_inputs/model_loss/model_opt`), alterna 1 passo de D e 1 de G e grava
-`runs/<data>/` (config, losses.csv, samples/, ckpt/).
-
-## Versões
-- Tag `v2019`: estado original (TF 1.x, notebook `GANS_FACE.ipynb`, `helper.py`, `problem_unittests.py`). Para ver: `git show v2019:GANS_FACE.ipynb`.
-- `master`: pacote `dcgan/` em TF 2.15 (compat.v1), rodável em scripts.
+## Mapa do código
+```
+dcgan/config.py     Config (dataclass): todos os parâmetros; vira flags de linha de comando
+dcgan/datasets.py   fontes de imagens → cache .npy → mistura → lotes na GPU
+dcgan/models.py     Generator, Discriminator, EMA
+dcgan/train.py      passo de treino, loop, amostras, checkpoints
+dcgan/metrics.py    FID (qualidade das imagens)
+dcgan/tune.py       busca de hiperparâmetros com orçamento de tempo
+dcgan/bench.py      medição de velocidade (img/s) com dados sintéticos
+tests/              pytest
+```
 
 ## Regra de manutenção
-Ao mudar código ou entender algo novo, no mesmo commit: (1) atualize o doc afetado (e `quirks.md`); (2) acrescente uma linha no topo de `log.md`; (3) se criar arquivo novo, inclua-o na tabela. Na dúvida, marque `(não verificado)`.
+Ao mudar código ou entender algo novo, no mesmo commit: (1) atualize o doc afetado (e `quirks.md`); (2) acrescente uma linha no topo de `log.md`; (3) se criar arquivo novo, inclua-o aqui. Na dúvida, marque `(não verificado)`.

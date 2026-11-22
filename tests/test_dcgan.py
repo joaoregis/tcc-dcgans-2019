@@ -1,77 +1,79 @@
-"""Testes rápidos (sem baixar nada): python -m pytest -q"""
+"""Testes rápidos (sem baixar nada): .venv\Scripts\python.exe -m pytest -q"""
 import numpy as np
 import pytest
+import torch
 from PIL import Image
 
-from dcgan import data
+from dcgan import datasets
 from dcgan.config import Config
-from dcgan.model import discriminator, generator, model_inputs, model_loss, model_opt, tf1
-from dcgan.train import train
+from dcgan.datasets import FaceData, Loader, parse_sources
+from dcgan.models import EMA, Discriminator, Generator, widths
+
+cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason='precisa de GPU CUDA')
 
 
-@pytest.fixture
-def graph():
-    with tf1.Graph().as_default() as g:
-        yield g
+def test_widths():
+    assert widths(64, 64) == [512, 256, 128, 64]
+    assert widths(128, 64) == [512, 512, 256, 128, 64]
 
 
-def test_model_inputs(graph):
-    real, z, lr = model_inputs(28, 28, 3, 100)
-    assert real.shape.as_list() == [None, 28, 28, 3]
-    assert z.shape.as_list() == [None, 100]
-    assert lr.shape.as_list() == []
-    assert all(t.op.type == 'Placeholder' for t in (real, z, lr))
+@pytest.mark.parametrize('res', [32, 64, 128, 256])
+def test_shapes(res):
+    g, d = Generator(res, 100, 16), Discriminator(res, 16)
+    x = g(torch.randn(2, 100, 1, 1))
+    assert x.shape == (2, 3, res, res) and x.abs().max() <= 1
+    assert d(x).shape == (2,)
 
 
-def test_discriminator_shapes_and_reuse(graph):
-    img = tf1.placeholder('float32', [None, 28, 28, 3])
-    out, logits = discriminator(img)
-    n = len(tf1.global_variables())
-    discriminator(img, reuse=True)
-    assert out.shape.as_list() == logits.shape.as_list() == [None, 1]
-    assert len(tf1.global_variables()) == n  # reuse não cria variáveis
+def test_ema_moves_toward_model():
+    g = Generator(32, 10, 8)
+    ema = EMA(g, 0.9)
+    with torch.no_grad():
+        for p in g.parameters():
+            p.add_(1.0)
+    ema.update(g, step=1000)
+    diffs = [(e - p).abs().mean() for e, p in zip(ema.model.parameters(), g.parameters())]
+    assert all(0 < d < 1 for d in diffs)
 
 
-def test_generator_shape_and_reuse(graph):
-    z = tf1.placeholder('float32', [None, 100])
-    out = generator(z, 3)
-    n = len(tf1.global_variables())
-    generator(z, 3, is_train=False)
-    assert out.shape.as_list() == [None, 28, 28, 3]
-    assert len(tf1.global_variables()) == n
+def test_parse_sources():
+    assert parse_sources('celeba:100, ffhq') == [('celeba', 100), ('ffhq', None)]
+    with pytest.raises(AssertionError):
+        parse_sources('inexistente')
 
 
-def test_loss_and_opt(graph):
-    real, z, _ = model_inputs(28, 28, 3, 100)
-    d_loss, g_loss = model_loss(real, z, 3)
-    assert d_loss.shape.as_list() == g_loss.shape.as_list() == []
-    model_opt(d_loss, g_loss, 0.001, 0.5)
-    names = {v.name.split('/')[0] for v in tf1.trainable_variables()}
-    assert names == {'discriminator', 'generator'}
-
-
-def test_get_image_crops_celeba(tmp_path):
+def test_load_image_celeba_crop(tmp_path):
     p = tmp_path / 'a.jpg'
-    Image.fromarray(np.zeros((218, 178, 3), np.uint8)).save(p)
-    assert data.get_image(str(p)).shape == (28, 28, 3)
+    Image.fromarray(np.full((218, 178, 3), 7, np.uint8)).save(p)
+    assert datasets.load_image(p, 'celeba', 64).shape == (64, 64, 3)
 
 
-def test_batches_range_and_drop_last():
-    imgs = np.random.randint(0, 256, (10, 28, 28, 3), dtype=np.uint8)
-    out = list(data.batches(imgs, 4, shuffle=True))
-    assert len(out) == 2 and out[0].shape == (4, 28, 28, 3)
-    assert -1.0 <= min(b.min() for b in out) and max(b.max() for b in out) <= 1.0
+def test_prepare_and_mix(tmp_path):
+    raw = tmp_path / 'raw' / 'lfw'
+    raw.mkdir(parents=True)
+    for i in range(5):
+        Image.fromarray(np.random.randint(0, 255, (50, 50, 3), np.uint8)).save(raw / f'{i}.png')
+    out = datasets.prepare('lfw', tmp_path, 16, workers=1)
+    assert np.load(out).shape == (5, 16, 16, 3)
+    data = FaceData.load('lfw:3,lfw', tmp_path, 16)
+    assert len(data) == 8
+    assert data.take(np.array([0, 2, 3, 7])).shape == (4, 16, 16, 3)
 
 
-def test_grid_size():
-    grid = data.images_square_grid(np.random.rand(25, 28, 28, 3))
-    assert grid.size == (140, 140)
+@cuda
+def test_loader_range_and_drop_last():
+    data = FaceData([np.random.randint(0, 256, (10, 16, 16, 3), dtype=np.uint8)])
+    batches = list(Loader(data, 4, torch.device('cuda'), flip=True))
+    assert len(batches) == 2 and batches[0].shape == (4, 3, 16, 16)
+    assert all(-1 <= b.min() and b.max() <= 1 for b in batches)
 
 
+@cuda
 def test_train_smoke(tmp_path):
-    imgs = np.random.randint(0, 256, (16, 28, 28, 3), dtype=np.uint8)
-    cfg = Config(batch_size=8, epochs=1, print_every=1, show_every=1, runs_dir=str(tmp_path), data_dir=str(tmp_path))
-    run = train(cfg, imgs)
-    assert (run / 'samples' / 'final.png').exists()
-    assert (run / 'losses.csv').read_text().count('\n') == 3  # cabeçalho + 2 passos
-    assert list((run / 'ckpt').glob('model-1*'))
+    from dcgan.train import train
+    data = FaceData([np.random.randint(0, 256, (32, 32, 32, 3), dtype=np.uint8)])
+    cfg = Config(resolution=32, g_width=8, d_width=8, batch_size=8, epochs=1, log_every=1, sample_every=2,
+                 runs_dir=str(tmp_path), data_dir=str(tmp_path))
+    run = train(cfg, data)
+    assert (run / 'samples' / 'final.png').exists() and (run / 'ckpt' / 'epoch_001.pt').exists()
+    assert (run / 'losses.csv').read_text().count('\n') == 5  # cabeçalho + 4 passos

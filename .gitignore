@@ -136,3 +136,4 @@ graphify-out/
 .venv/
 __pycache__/
 runs/
+local.env

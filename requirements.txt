@@ -1,5 +1,9 @@
-tensorflow==2.15.0
-numpy<2
+# PyTorch com CUDA 12.8 (RTX 4060). Instalar com:
+#   uv pip install --python .venv\Scripts\python.exe torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#   uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+numpy
 pillow
 tqdm
+torchmetrics
+torch-fidelity
 pytest

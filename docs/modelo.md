@@ -1,28 +1,28 @@
-# dcgan/model.py e dcgan/config.py
+# dcgan/models.py
 
-TF 2.15 em modo grafo (`tf.compat.v1`, `disable_eager_execution()` ao importar `dcgan.model`). Imagens 28×28×3 em [-1, 1].
+## Arquitetura (resolução R, largura base w=64)
+`widths(R, w)` devolve as larguras dos blocos: `[min(w·2^(n−1−i), 512) for i in range(n)]`, com `n = log2(R) − 2`.
+- R=64 → `[512, 256, 128, 64]`; R=128 → `[512, 512, 256, 128, 64]`.
 
-## model.py
-- **`model_inputs(w, h, c, z_dim)`** → placeholders `real_input_images`, `input_z`, `learning_rate` (este último não é usado no treino).
-- **`discriminator(images, reuse, alpha, dropout_rate, training)`** → `(sigmoid(logit), logit)`; escopo `'discriminator'`.
-  conv 64 (5×5, s2, glorot, com bias) → conv 128 + BN → conv 256 + BN (5×5, s2, sem bias); Leaky ReLU (`max(αx, x)`) + dropout após cada bloco; flatten 4·4·256 → dense 1.
-  `training=False` = comportamento de 2019 (sem dropout, BN em inferência).
-- **`generator(z, out_channels, is_train, alpha, dropout_rate)`** → imagem `tanh`; escopo `'generator'`, `reuse=(not is_train)`.
-  dense 4·4·1024 → BN/LReLU/dropout → convT 512 (4×4, s1, valid → 7×7) → convT 256 (5×5, s2 → 14×14) → convT c (5×5, s2 → 28×28) → tanh.
-  `is_train=False` reutiliza variáveis (amostragem) e precisa vir depois de o gerador de treino existir.
-- **`model_loss(real, z, c, alpha, smooth_factor, dropout_rate, d_training)`** → `d_loss = BCE(real, 1−0.1) + BCE(fake, 0)`, `g_loss = BCE(fake, 1)`.
-- **`model_opt(d_loss, g_loss, lr, beta1)`** → dois Adam, cada um com as variáveis do seu escopo, sob `control_dependencies(UPDATE_OPS)`.
-  Consequência: **qualquer passo (D ou G) executa os updates da BN de D e G, que dependem do input real e do z** → o passo de G precisa receber `input_real` também (feito em `train.py`).
+**Generator** (`z` de forma `(B,100,1,1)`):
+`ConvT(100→512, 4×4) → BN → ReLU` (1×1 → 4×4) → para cada par de larguras `ConvT(4,2,1) → BN → ReLU` (dobra a resolução) →
+`ConvT(→3) → tanh` (saída em [-1, 1]). R=64: 4→8→16→32→64.
 
-## config.py (`Config`, dataclass)
-| Campo | Padrão | Nota |
-|---|---|---|
-| batch_size / z_dim | 64 / 100 | |
-| learning_rate / beta1 | 0.00025 / 0.45 | Adam |
-| epochs | 10 | |
-| alpha / dropout_rate / smooth_factor | 0.2 / 0.5 / 0.1 | |
-| print_every / show_every | 10 / 100 | passos |
-| fix_2019_bugs | True | D com dropout e BN em modo treino; `False` reproduz 2019 |
-| shuffle | True | embaralha por época (2019 não embaralhava) |
-| data_dir | `DCGAN_DATA_DIR` ou `~/datasets/dcgan` | fora do repo/OneDrive |
-| runs_dir / limit_images / max_steps / seed | `runs` / 0 / 0 / 0 | 0 = sem limite / aleatório |
+**Discriminator**: espelho. `Conv(3→64, s2) → LeakyReLU(0.2)` (sem BN na 1ª camada) → `Conv(s2) → BN → LeakyReLU` … até 4×4 →
+`Conv(512→1, 4×4)` → 1 *logit* por imagem (a sigmoide fica dentro da perda `binary_cross_entropy_with_logits`, mais estável).
+
+Tamanho: G ≈ 3,6 M parâmetros e D ≈ 2,8 M em R=64 (valor aproximado; conferir na 1ª linha do log de treino).
+
+**Inicialização**: pesos das convoluções N(0, 0,02), escala da BN N(1, 0,02) — receita do artigo DCGAN.
+
+## EMA (`EMA`)
+Guarda uma cópia de G cujos pesos são `ema = d·ema + (1−d)·pesos`, `d = 0,999` (com aquecimento `min(d, (1+t)/(10+t))`
+para não ficar presa aos pesos iniciais). Os pesos de G oscilam passo a passo (o jogo contra D é instável); a média é mais
+estável e costuma gerar imagens melhores. **Amostras e FID usam a cópia EMA.** Estatísticas da BN são copiadas, não suavizadas.
+Custo: um `_foreach_lerp_` por passo (desprezível).
+
+## Perda (em `train.train_step`)
+Ver `como-funciona.md` §3. D: BCE(real, 1−0,1) + BCE(falso, 0). G: BCE(falso, 1).
+
+## Por que sem dropout / sem camada densa
+O DCGAN canônico não usa nenhum dos dois. Em 2019 o dropout do D nunca estava ativo (bug), então removê-lo não altera o que de fato rodava.
