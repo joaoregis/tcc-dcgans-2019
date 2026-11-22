@@ -77,3 +77,18 @@ def test_train_smoke(tmp_path):
     run = train(cfg, data)
     assert (run / 'samples' / 'final.png').exists() and (run / 'ckpt' / 'epoch_001.pt').exists()
     assert (run / 'losses.csv').read_text().count('\n') == 5  # cabeçalho + 4 passos
+
+
+@cuda
+def test_generate_from_checkpoint_and_export(tmp_path):
+    from dcgan.generate import export, generate, load_generator
+    from dcgan.train import train
+    data = FaceData([np.random.randint(0, 256, (16, 32, 32, 3), dtype=np.uint8)])
+    cfg = Config(resolution=32, g_width=8, d_width=8, batch_size=8, epochs=1, runs_dir=str(tmp_path), data_dir=str(tmp_path))
+    ck = next((train(cfg, data) / 'ckpt').glob('*.pt'))
+    export(ck, tmp_path / 'g.pt')
+    for path in (ck, tmp_path / 'g.pt'):
+        g, c = load_generator(path)
+        a, b = generate(g, c, 4, seed=1), generate(g, c, 4, seed=1)
+        assert a.shape == (4, 3, 32, 32) and torch.equal(a, b) and 0 <= a.min() and a.max() <= 1
+    assert (tmp_path / 'g.pt').stat().st_size < ck.stat().st_size

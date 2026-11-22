@@ -9,6 +9,7 @@ Consulte aqui **antes** de ler o código. Se é a primeira vez: leia [como-funci
 | [modelo.md](modelo.md) | `dcgan/models.py`: arquitetura, resolução, EMA, perda |
 | [dados.md](dados.md) | `dcgan/datasets.py`: fontes, pré-processamento, cache, mistura, lotes; como adicionar um dataset |
 | [treino.md](treino.md) | `dcgan/train.py` e `dcgan/config.py`: o passo de treino, flags, saídas em `runs/`, como retomar |
+| [usar-modelo.md](usar-modelo.md) | Depois do treino: gerar imagens, exportar só o gerador, usar em Python |
 | [desempenho.md](desempenho.md) | Medições na RTX 4060, o que acelerou e o que não funcionou |
 | [tuning.md](tuning.md) | Como ajustamos batch/lr/épocas (tempo × qualidade): método, FID, resultados |
 | [testes.md](testes.md) | `tests/test_dcgan.py` |
@@ -21,6 +22,7 @@ dcgan/config.py     Config (dataclass): todos os parâmetros; vira flags de linh
 dcgan/datasets.py   fontes de imagens → cache .npy → mistura → lotes na GPU
 dcgan/models.py     Generator, Discriminator, EMA
 dcgan/train.py      passo de treino, loop, amostras, checkpoints
+dcgan/generate.py  usa o gerador treinado (gera imagens, exporta pesos)
 dcgan/metrics.py    FID (qualidade das imagens)
 dcgan/tune.py       busca de hiperparâmetros com orçamento de tempo
 dcgan/bench.py      medição de velocidade (img/s) com dados sintéticos

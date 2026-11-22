@@ -46,6 +46,7 @@ em vez de 1 (*label smoothing*), o que deixa D menos arrogante e estabiliza o tr
   `FaceData` (mistura fontes), `Loader` (lotes na GPU).
 - **`train.py`** — `train_step` (acima), `train` (prepara tudo, roda épocas, grava amostras/checkpoints/log em `runs/<data>/`).
 - **`metrics.py`** — `fid`: nota objetiva de qualidade (menor é melhor). **`tune.py`** usa o FID para escolher hiperparâmetros.
+- **`generate.py`** — carrega o gerador treinado e cria imagens (ver `usar-modelo.md`).
 - **`bench.py`** — mede imagens/segundo (ver `desempenho.md`).
 
 ## 5. Rodar

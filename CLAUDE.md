@@ -3,7 +3,7 @@
 TCC (2019): DCGAN que gera rostos humanos, agora em PyTorch + CUDA (resolução 64→128 px, várias bases de faces). Código original (TF 1.x, notebook) na tag `v2019`.
 
 ## Layout
-- `dcgan/` — `config.py`, `datasets.py`, `models.py`, `train.py`, `metrics.py` (FID), `tune.py`, `bench.py`.
+- `dcgan/` — `config.py`, `datasets.py`, `models.py`, `train.py`, `metrics.py` (FID), `tune.py`, `bench.py`, `generate.py`.
 - `tests/test_dcgan.py` — pytest. `docs/` — documentação viva (comece por `docs/README.md` e `docs/como-funciona.md`).
 
 ## Ambiente
