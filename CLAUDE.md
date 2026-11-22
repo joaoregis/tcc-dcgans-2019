@@ -9,7 +9,7 @@ TCC (2019): DCGAN que gera rostos humanos, agora em PyTorch + CUDA (resolução 
 ## Ambiente
 Windows, **Python 3.11 + PyTorch 2.11 (CUDA 12.8)** em `.venv/` (uv). GPU RTX 4060 8 GB, 31 GB RAM. Sem Jupyter: tudo por scripts.
 Datasets em **`D:\datasets\faces`** (HDD; via `local.env`, ignorado pelo git) — nunca no `C:` (pouco espaço) nem no repo/OneDrive.
-`torch.compile` não funciona aqui (sem Triton/MSVC).
+`torch.compile` testado: não compensa (ver `docs/desempenho.md`).
 
 ## Comandos (sempre `.venv\Scripts\python.exe`)
 `-m pytest -q` · `-m dcgan.bench` · `-m dcgan.datasets --sources celeba --resolution 64` · `-m dcgan.train --help` · `-m dcgan.tune --help`

@@ -24,7 +24,7 @@ batch 32: 1 215 · 64: 1 287 · 128: 1 313 img/s; 0,4–0,9 GB. Sobra muita VRAM
 - 64 px: ≈ 33 s/época; 128 px: ≈ 2,6 min/época. (TF 2.15 em CPU, antes: ≈ 14 min/época a 28 px.)
 
 ## O que não funcionou
-- **`torch.compile`**: falha no Windows sem Triton e sem compilador MSVC (`cl.exe`). A opção foi removida do código. Poderia ser reavaliada com `triton-windows` + Visual Studio Build Tools; ganho esperado modesto, rede pequena.
+- **`torch.compile`** (testado 2026-11-22 com `triton-windows` 3.9, **sem** precisar do MSVC): 64 px, batch 128, bf16, NCHW: 5 388 img/s compilado vs 5 125 sem compilar (+5%). Mas o melhor modo sem compilar (`channels_last`) já faz 6 294 img/s, e **compilar junto com `channels_last` falha** (`AssertionError` de strides em `convolution_backward`, bug do Inductor). Ganho líquido negativo → opção removida do código e `triton-windows` desinstalado. Reavaliar se o PyTorch corrigir o bug ou se a rede crescer muito.
 - **Treino em CPU** (etapa TF intermediária): ~0,27 s/passo; ~35× mais lento que a GPU.
 
 ## Como remedir

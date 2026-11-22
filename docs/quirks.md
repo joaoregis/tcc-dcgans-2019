@@ -12,5 +12,5 @@ Código original: tag `v2019`. Estes problemas foram encontrados por leitura do 
 ## Pendências / riscos
 - Qualidade das imagens e FID ainda **não medidos** (treino real pendente).
 - Datasets além do CelebA exigem download manual; fontes/licenças a confirmar (ver `dados.md`).
-- `torch.compile` indisponível (sem Triton/MSVC).
+- `torch.compile`: com `triton-windows` funciona, mas é mais lento que `channels_last` sem compilar e quebra junto com ele (ver `desempenho.md`).
 - Equivalência com a rede de 2019 não existe: a arquitetura mudou (ver `migracao.md`).

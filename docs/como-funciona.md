@@ -56,3 +56,16 @@ em vez de 1 (*label smoothing*), o que deixa D menos arrogante e estabiliza o tr
 .venv\Scripts\python.exe -m dcgan.train --sources celeba --resolution 64      # treina
 ```
 Resultado de cada treino: `runs/<data>/` com `config.json`, `losses.csv`, `samples/*.png`, `ckpt/epoch_NNN.pt`, `time.txt`.
+
+## 6. Perguntas frequentes
+**Isto é mesmo um DCGAN?** Sim. Segue as diretrizes de Radford et al. (2015): convoluções com *stride* no lugar de *pooling*,
+convolução transposta no gerador, BatchNorm nas duas redes (exceto saída do G e entrada do D), ReLU no G com `tanh` na saída,
+LeakyReLU no D, nenhuma camada densa escondida (a projeção de `z` virou uma `ConvT` 1×1→4×4, equivalente). Extras que **não** estão no artigo:
+*label smoothing* de 0,1 (Salimans et al., 2016; já usado em 2019), EMA dos pesos de G (prática posterior, de ProGAN/StyleGAN),
+precisão bf16 e espelhamento aleatório. O código de 2019 era "estilo DCGAN" mas se afastava do canônico (camada densa 4×4×1024, dropout, BN do D mal usada).
+
+**Dá para otimizar a rede em tempo real mexendo em parâmetros?** Em parte. Já acontece: o Adam adapta o passo de cada peso sozinho.
+Ajustar hiperparâmetros (lr, batch, β1) *durante* o treino é possível (o `--resume` permite parar, mudar a flag e continuar) e há técnicas
+para isso (decaimento do lr, parada por platô do FID, *Population Based Training*, Optuna com poda de tentativas), mas em GANs é arriscado:
+muda o equilíbrio entre G e D e dificulta reproduzir. **Não está implementado**; hoje o ajuste é feito *entre* execuções curtas com FID (`tune.py`).
+Um próximo passo barato seria decair o lr no fim do treino e parar quando o FID parar de melhorar.

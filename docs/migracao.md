@@ -25,4 +25,4 @@ Perda não saturante, *label smoothing* de 0,1 nos rótulos reais, LeakyReLU 0,2
 ## Ressalvas honestas
 - Não há prova de que a qualidade final iguala ou supera a de 2019: isso depende do treino real (pendente; ver `tuning.md`).
 - A arquitetura de G/D mudou (não é a mesma rede do TCC). O comportamento de 2019 só é reproduzível pela tag `v2019` (TF 1.x).
-- `torch.compile` não funciona aqui (sem Triton/MSVC); ver `desempenho.md`.
+- `torch.compile` foi testado e não compensou (ver `desempenho.md`).
