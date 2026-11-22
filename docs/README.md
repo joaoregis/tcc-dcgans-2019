@@ -1,25 +1,24 @@
 # docs/ — documentação viva do projeto
 
-Consulte aqui **antes** de ler o código. Cada arquivo descreve um artefato do repo.
+Consulte aqui **antes** de ler o código.
 
 | Doc | Cobre |
 |---|---|
-| [notebook.md](notebook.md) | `GANS_FACE.ipynb`: pipeline, arquitetura, loss, treino, saídas |
-| [helper.md](helper.md) | `helper.py`: download, pré-processamento, `Dataset`, grade de imagens |
-| [tests.md](tests.md) | `problem_unittests.py`: testes de contrato chamados no notebook |
-| [quirks.md](quirks.md) | Comportamentos estranhos / bugs conhecidos (não corrigidos) |
+| [modelo.md](modelo.md) | `dcgan/model.py` e `dcgan/config.py`: arquitetura, loss, otimizadores, hiperparâmetros |
+| [dados.md](dados.md) | `dcgan/data.py`: download, cache 28×28, lotes, grade de imagens |
+| [treino.md](treino.md) | `dcgan/train.py`: loop, saídas em `runs/`, CLI, desempenho na CPU |
+| [testes.md](testes.md) | `tests/test_dcgan.py` |
+| [quirks.md](quirks.md) | Bugs do código de 2019 (corrigidos ou não) e pendências |
 | [log.md](log.md) | Histórico de mudanças e decisões, mais recente primeiro |
 
-## Visão geral do fluxo
-`helper.download_extract` baixa o CelebA → `helper.Dataset` entrega lotes 28×28 RGB em [-0.5, 0.5] →
-o notebook define `model_inputs/discriminator/generator/model_loss/model_opt` (cada um validado por
-`problem_unittests`) → `train()` treina o DCGAN e salva grades de amostras em `output/` e checkpoints em `model/`.
+## Fluxo
+`data.load_celeba` baixa o CelebA e gera o cache uint8 `(N,28,28,3)` → `data.batches` entrega lotes em [-1, 1] →
+`train.train` constrói o grafo (`model_inputs/model_loss/model_opt`), alterna 1 passo de D e 1 de G e grava
+`runs/<data>/` (config, losses.csv, samples/, ckpt/).
 
-## Regra de manutenção (importante)
-Ao mudar código ou entender algo novo, no mesmo commit:
-1. Atualize o doc do artefato afetado (e `quirks.md` se corrigir/descobrir um problema).
-2. Acrescente uma linha no topo de `log.md` (data, o quê, por quê).
-3. Se criar um arquivo novo no repo, adicione-o à tabela acima.
-Doc desatualizado é pior que doc ausente: se não tiver certeza, marque `(não verificado)`.
+## Versões
+- Tag `v2019`: estado original (TF 1.x, notebook `GANS_FACE.ipynb`, `helper.py`, `problem_unittests.py`). Para ver: `git show v2019:GANS_FACE.ipynb`.
+- `master`: pacote `dcgan/` em TF 2.15 (compat.v1), rodável em scripts.
 
-Estado inicial documentado em 2026-11-22, a partir da leitura do código (nada foi executado; ainda não rodamos o treino).
+## Regra de manutenção
+Ao mudar código ou entender algo novo, no mesmo commit: (1) atualize o doc afetado (e `quirks.md`); (2) acrescente uma linha no topo de `log.md`; (3) se criar arquivo novo, inclua-o na tabela. Na dúvida, marque `(não verificado)`.

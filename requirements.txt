@@ -1,7 +1,5 @@
-# TensorFlow 1.x (precisa de Python <= 3.7)
-tensorflow==1.15.5
-numpy<1.19
-Pillow
-matplotlib
+tensorflow==2.15.0
+numpy<2
+pillow
 tqdm
-jupyter
+pytest

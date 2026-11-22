@@ -133,3 +133,6 @@ Hora*.txt
 
 # Graphify (gerado)
 graphify-out/
+.venv/
+__pycache__/
+runs/

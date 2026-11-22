@@ -1,27 +1,28 @@
 # tcc-dcgans-2019
 
-TCC (2019): DCGAN que gera rostos humanos a partir do CelebA. Estilo Udacity (projeto face generation).
+TCC (2019): DCGAN que gera rostos humanos 28×28 a partir do CelebA. Código original (TF 1.x, notebook) na tag `v2019`.
 
-## Arquivos
-- `GANS_FACE.ipynb` — notebook principal: modelo (discriminador/gerador), loss, otimizador, treino.
-- `helper.py` — download do CelebA, `Dataset`, `images_square_grid`.
-- `problem_unittests.py` — testes chamados dentro do notebook (`tests.test_*`).
+## Layout
+- `dcgan/` — `config.py` (hiperparâmetros), `data.py` (CelebA), `model.py` (D, G, loss, otimizadores), `train.py` (CLI de treino).
+- `tests/test_dcgan.py` — pytest, sem baixar dados.
+- `docs/` — documentação viva.
 
-## Stack
-Python 3.6/3.7 + **TensorFlow 1.x** (usa `tf.placeholder`, `tf.layers`, `tf.contrib`; não roda em TF2). Ver `requirements.txt`.
+## Ambiente
+Windows, **Python 3.11 + TensorFlow 2.15 (CPU)** em `.venv/` (uv). O código usa `tf.compat.v1` em modo grafo para ser equivalente ao TF 1.x de 2019. Sem Jupyter: tudo roda por scripts. GPU nativa no Windows não é suportada por esse TF; ~0,27 s/passo na CPU (≈2,5 h para 10 épocas).
 
-## Rodar
-1. `pip install -r requirements.txt`
-2. Abrir o notebook; a 1ª célula baixa o CelebA em `/input` (`data_dir`).
-3. Executar as células em ordem. Hiperparâmetros: batch 64, z_dim 100, lr 0.00025, beta1 0.45, 10 épocas.
+## Comandos
+Use sempre `.venv\Scripts\python.exe`:
+- `-m pytest -q` — testes (rápidos).
+- `-m dcgan.train --help` — todas as opções (épocas, `--limit-images`, `--max-steps`, `--no-fix-2019-bugs`...).
+- `-m dcgan.data` — baixa o CelebA (~1,4 GB) para `~/datasets/dcgan`.
 
 ## Docs (viva)
 Consulte `docs/README.md` antes de ler o código. **Ao mudar código ou descobrir algo, atualize o doc afetado e acrescente uma linha em `docs/log.md` no mesmo commit.**
 
 ## Regras
-- Não commitar dataset, checkpoints nem imagens geradas pesadas.
-- Notebook gera `HoraInicio.txt` / `HoraFinal.txt` (tempo de treino); são artefatos locais.
-- Não migrar para TF2/PyTorch sem pedido explícito: o objetivo é preservar o experimento de 2019.
+- Não commitar dataset, `runs/`, `.venv/` nem `graphify-out/`.
+- Rode `pytest` antes de commitar mudanças em `dcgan/`.
+- O comportamento de 2019 é reproduzível com `--no-fix-2019-bugs`; não removê-lo sem pedido.
 
 ## graphify
 
