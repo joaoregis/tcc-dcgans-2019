@@ -130,3 +130,6 @@ dmypy.json
 
 # Artefatos de treino
 Hora*.txt
+
+# Graphify (gerado)
+graphify-out/
