@@ -15,6 +15,9 @@ Python 3.6/3.7 + **TensorFlow 1.x** (usa `tf.placeholder`, `tf.layers`, `tf.cont
 2. Abrir o notebook; a 1ª célula baixa o CelebA em `/input` (`data_dir`).
 3. Executar as células em ordem. Hiperparâmetros: batch 64, z_dim 100, lr 0.00025, beta1 0.45, 10 épocas.
 
+## Docs (viva)
+Consulte `docs/README.md` antes de ler o código. **Ao mudar código ou descobrir algo, atualize o doc afetado e acrescente uma linha em `docs/log.md` no mesmo commit.**
+
 ## Regras
 - Não commitar dataset, checkpoints nem imagens geradas pesadas.
 - Notebook gera `HoraInicio.txt` / `HoraFinal.txt` (tempo de treino); são artefatos locais.
