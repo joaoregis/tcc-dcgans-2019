@@ -9,11 +9,11 @@ import os
 import queue
 import threading
 import zipfile
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
-from urllib.request import urlretrieve
+from urllib.request import Request, urlopen
 
 import numpy as np
 import torch
@@ -56,6 +56,35 @@ SOURCES = {
 
 
 # ---------------------------------------------------------------- download / pré-processamento
+def fetch_parallel(url, dest, connections=16, part=8 << 20, desc=''):
+    """Download em partes com várias conexões (HTTP Range). Servidores como o do CelebA limitam cada conexão
+    a ~100-300 kB/s; 16 conexões somam bem mais. Cada parte tenta até 5 vezes."""
+    with urlopen(Request(url, method='HEAD')) as r:
+        size = int(r.headers['Content-Length'])
+    with open(dest, 'wb') as f:
+        f.truncate(size)
+    bar = tqdm(total=size, unit='B', unit_scale=True, desc=desc)
+
+    def get(start):
+        end = min(start + part, size) - 1
+        for attempt in range(5):
+            try:
+                with urlopen(Request(url, headers={'Range': f'bytes={start}-{end}'}), timeout=60) as r:
+                    data = r.read()
+                assert len(data) == end - start + 1
+                with open(dest, 'r+b') as f:   # cada parte abre o arquivo: seek independente por thread
+                    f.seek(start)
+                    f.write(data)
+                bar.update(len(data))
+                return
+            except Exception:
+                if attempt == 4:
+                    raise
+    with ThreadPoolExecutor(connections) as ex:
+        list(ex.map(get, range(0, size, part)))
+    bar.close()
+
+
 def download(name, data_dir):
     """Baixa e extrai uma fonte com URL conhecida em raw/<nome>/. Sem URL, explica o que fazer."""
     src, raw = SOURCES[name], Path(data_dir) / 'raw' / name
@@ -65,8 +94,7 @@ def download(name, data_dir):
         raise FileNotFoundError(f'Coloque as imagens de {name} em {raw} ({src.note}).')
     raw.mkdir(parents=True, exist_ok=True)
     zip_path = raw / 'download.zip'
-    with tqdm(unit='B', unit_scale=True, miniters=1, desc=f'Baixando {name}') as bar:
-        urlretrieve(src.url, zip_path, lambda n, bs, total: (setattr(bar, 'total', total), bar.update(bs)))
+    fetch_parallel(src.url, zip_path, desc=f'Baixando {name}')
     if src.md5:
         digest = hashlib.md5()
         with open(zip_path, 'rb') as f:

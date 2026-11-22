@@ -59,6 +59,8 @@ em vez de 1 (*label smoothing*), o que deixa D menos arrogante e estabiliza o tr
 Resultado de cada treino: `runs/<data>/` com `config.json`, `losses.csv`, `samples/*.png`, `ckpt/epoch_NNN.pt`, `time.txt`.
 
 ## 6. Perguntas frequentes
+Versão completa e atualizada em [faq.md](faq.md). Resumo:
+
 **Isto é mesmo um DCGAN?** Sim. Segue as diretrizes de Radford et al. (2015): convoluções com *stride* no lugar de *pooling*,
 convolução transposta no gerador, BatchNorm nas duas redes (exceto saída do G e entrada do D), ReLU no G com `tanh` na saída,
 LeakyReLU no D, nenhuma camada densa escondida (a projeção de `z` virou uma `ConvT` 1×1→4×4, equivalente). Extras que **não** estão no artigo:

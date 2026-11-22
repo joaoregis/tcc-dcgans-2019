@@ -5,6 +5,7 @@ Consulte aqui **antes** de ler o código. Se é a primeira vez: leia [como-funci
 | Doc | Para quê |
 |---|---|
 | [como-funciona.md](como-funciona.md) | **Comece aqui.** Explicação didática: o que é um DCGAN, o caminho de um dado do disco até a imagem gerada, arquivo por arquivo |
+| [faq.md](faq.md) | Dúvidas que surgiram (DCGAN, FID, seeds e aritmética de vetores, usar o modelo...) |
 | [migracao.md](migracao.md) | O que mudou em relação ao código de 2019 (e por quê), item por item |
 | [modelo.md](modelo.md) | `dcgan/models.py`: arquitetura, resolução, EMA, perda |
 | [dados.md](dados.md) | `dcgan/datasets.py`: fontes, pré-processamento, cache, mistura, lotes; como adicionar um dataset |
