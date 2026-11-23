@@ -1,5 +1,6 @@
 # Log de mudanças e decisões (mais recente primeiro)
 
+- 2026-11-23 — **128 px**: cache `celeba_128.npy` (9,96 GB); ajuste (batch 32, lr 2e-4 é o melhor; lotes menores vencem a 128 px) e treino de 20 épocas (FID 31,0, 54 min). Exemplos em `docs/exemplos/128_*.png`.
 - 2026-11-23 — **Ajuste de hiperparâmetros concluído a 64 px** (ver `tuning.md`): batch 128, lr 2e-4, β1 0,5, EMA 0,999; joelho em ~10–12 épocas, padrão `epochs=20` (FID ~31), melhor com 40 épocas (FID 26,5). Corrigidos: `tune` por épocas fixas (`--epochs`), checkpoint final sempre salvo, import tardio do torch em `datasets`. Novo `dcgan/curve.py` (FID por época). Imagens de exemplo em `docs/exemplos/`.
 - 2026-11-22 — Adicionado `dcgan/latent.py` (interpolação slerp/linear e aritmética de vetores por seeds) com testes.
 - 2026-11-22 — Criado `docs/faq.md`; download do CelebA passou a usar 16 conexões em paralelo (`fetch_parallel`); pesos do FID baixados.

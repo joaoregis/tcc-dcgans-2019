@@ -5,12 +5,30 @@ O código original (TensorFlow 1.x, notebook) está preservado na tag [`v2019`](
 
 | | |
 |---|---|
-| **Modelo** | DCGAN canônico (Radford et al., 2015), resolução parametrizada (64 px já treinada; 128 px planejada) |
+| **Modelo** | DCGAN canônico (Radford et al., 2015), resolução parametrizada (64 e 128 px já treinadas) |
 | **Dados** | CelebA (202 599 faces); suporte a FFHQ, CelebA-HQ, UTKFace e LFW |
-| **Velocidade** | ~6 000 img/s a 64 px na RTX 4060 (bf16 + `channels_last`): ~35 s por época do CelebA |
-| **Qualidade** | FID 26,5 após 40 épocas (~26 min); FID ~30 em 12 épocas (~8 min) |
+| **Velocidade** | RTX 4060 (bf16 + `channels_last`): ~6 000 img/s a 64 px (~35 s/época); ~1 400 img/s a 128 px (~2,5 min/época) |
+| **Qualidade (FID, menor = melhor)** | 64 px: 26,5 (40 épocas, ~26 min) · 128 px: 31,0 (20 épocas, ~54 min). Não comparáveis entre si |
 
-## Resultados (64×64, CelebA, 40 épocas)
+## Resultados
+
+### 128×128 (CelebA, 20 épocas, FID 31,0)
+**Geradas** (esquerda) vs. **reais** (direita):
+
+<p>
+<img src="docs/exemplos/128_amostras_geradas.png" width="400" alt="36 rostos gerados a 128 px">
+<img src="docs/exemplos/128_amostras_reais.png" width="400" alt="36 rostos reais a 128 px">
+</p>
+
+**Evolução** — mesmo `z`, linhas = épocas 2, 4, 8, 12 e 20:
+
+<img src="docs/exemplos/128_evolucao.png" width="520" alt="evolução a 128 px">
+
+**Interpolação** (seeds 5 e 12):
+
+<img src="docs/exemplos/128_interpolacao.png" width="640" alt="interpolação a 128 px">
+
+### 64×64 (CelebA, 40 épocas, FID 26,5)
 
 **Geradas pelo modelo** (esquerda) vs. **imagens reais do CelebA** (direita):
 
@@ -51,7 +69,8 @@ Crie `local.env` com a pasta dos datasets (fora do repo): `DCGAN_DATA_DIR=D:\dat
 |---|---|
 | Testes (14, sem baixar nada) | `.venv\Scripts\python.exe -m pytest -q` |
 | Baixar e preparar o CelebA (~1,4 GB; cache 2,5 GB a 64 px) | `.venv\Scripts\python.exe -m dcgan.datasets --sources celeba --resolution 64` |
-| Treinar (padrão: 20 épocas, ~13 min) | `.venv\Scripts\python.exe -m dcgan.train --sources celeba --resolution 64` |
+| Treinar a 64 px (padrão: 20 épocas, ~13 min) | `.venv\Scripts\python.exe -m dcgan.train --sources celeba --resolution 64` |
+| Treinar a 128 px (~54 min; cache de 10 GB) | `... -m dcgan.datasets --sources celeba --resolution 128` e `... -m dcgan.train --resolution 128 --batch-size 32 --epochs 20` |
 | Retomar um treino | `... -m dcgan.train --resume runs\<data>\ckpt\epoch_010.pt` |
 | Gerar imagens | `... -m dcgan.generate runs\<data>\ckpt\epoch_020.pt --n 64 --seed 1` |
 | Exportar só o gerador (~14 MB) | `... -m dcgan.generate runs\<data>\ckpt\epoch_020.pt --export gerador.pt` |
@@ -63,8 +82,9 @@ Crie `local.env` com a pasta dos datasets (fora do repo): `DCGAN_DATA_DIR=D:\dat
 Todas as opções do treino: `-m dcgan.train --help`. Cada treino cria `runs/<data>/` com `config.json`, `losses.csv`, `samples/`, `ckpt/`.
 
 ## Configuração escolhida
-batch 128 · lr 2e-4 (G e D) · Adam β1 0,5 · EMA 0,999 nos pesos do gerador · *label smoothing* 0,1 · bf16 · 20 épocas (40 para o melhor resultado).
-Escolhida por medição de FID × tempo ([docs/tuning.md](docs/tuning.md)).
+**64 px:** batch 128 · lr 2e-4 (G e D) · Adam β1 0,5 · EMA 0,999 · *label smoothing* 0,1 · bf16 · 20 épocas (40 para o melhor resultado).
+**128 px:** igual, mas **batch 32** (lotes menores vencem nessa resolução), 20 épocas.
+Escolhidas por medição de FID × tempo ([docs/tuning.md](docs/tuning.md)).
 
 ## Estrutura
 ```
@@ -81,6 +101,6 @@ Mais: [migração 2019 → hoje](docs/migracao.md) · [modelo](docs/modelo.md) �
 ## Estado e próximos passos
 - [x] Reescrita em PyTorch + CUDA, testes, cache de dados, EMA, FID, ajuste a 64 px
 - [x] Modelo de 64 px treinado (FID 26,5) e inferência/interpolação/aritmética
-- [ ] 128 px (ajuste e treino)
+- [x] 128 px: ajuste e treino (FID 31,0)
 - [ ] Mais bases (FFHQ, CelebA-HQ, UTKFace, LFW): download manual ainda não feito
-- [ ] Ajustar a arquitetura para resoluções maiores se 128 px saturar
+- [ ] 256 px (provavelmente exige arquitetura/treino mais elaborados)

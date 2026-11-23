@@ -1,6 +1,6 @@
 # Ajuste de hiperparâmetros: equilíbrio tempo × qualidade
 
-**Estado: fases 1, 2 e 3 concluídas (64 px). Pendente: 128 px e mistura de datasets.** Dados: CelebA 64 px (202 599 imagens). Resultados em `runs/tune_*.csv` (local, não versionado).
+**Estado: 64 px e 128 px concluídos. Pendente: mistura de datasets.** Dados: CelebA 64 px (202 599 imagens). Resultados em `runs/tune_*.csv` (local, não versionado).
 
 ## Métrica de qualidade: FID
 *Fréchet Inception Distance* compara estatísticas de imagens reais e geradas numa rede Inception: **menor = melhor**
@@ -80,6 +80,34 @@ Leitura:
 
 Limites: uma execução por ponto, sem repetição de seeds; FID com 5 000 imagens tem ruído de ±1–2. A 128 px e com mais datasets os valores ótimos podem mudar.
 
+## 128 px (CelebA, β1 0,5, EMA 0,999; épocas fixas)
+Cache: `celeba_128.npy` (9,96 GB). Mesma GPU, ~1 460 img/s com dados reais (≈ 140–160 s por época). FID **não é comparável** com o de 64 px (resolução e conjunto de referência diferentes).
+
+### Ajuste curto — 6 épocas por combinação
+| batch | lr (G = D) | passos | segundos | FID (EMA) | FID sem EMA |
+|---|---|---|---|---|---|
+| 128 | 1e-4 | 9 492 | 843 | 93,8 | 100,4 |
+| 128 | 2e-4 | 9 492 | 836 | 77,5 | 84,9 |
+| 64 | 2e-4 | 18 990 | 885 | 64,0 | 69,4 |
+| 64 | 4e-4 | 18 990 | 884 | 56,0 | 71,1 |
+| **32** | **2e-4** | 37 986 | 969 | **52,7** | 66,8 |
+
+Leitura: **a 128 px lotes menores vencem** (o oposto do que se viu a 64 px): a GPU já está saturada com batch 32, então mais passos custam quase o mesmo tempo (+10% do 128 ao 32) e pesam mais que lotes grandes. lr maior também ajuda. EMA reduz o FID em 7–15 pontos de novo. Batch 32 (52,7) e batch 64 com lr 4e-4 (56,0) estão a 3 pontos — pode ser ruído de uma execução; escolhi o de menor FID. Não testado: batch 32 com lr 4e-4, batch 16.
+
+### Duração — treino de 20 épocas (batch 32, lr 2e-4; 126 620 passos em 3 214 s ≈ 54 min)
+| época | 2 | 4 | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| FID | 83,6 | 55,8 | 48,9 | 35,4 | 35,7 | 32,7 | 34,1 | 34,1 | 33,9 | **31,0** |
+
+Joelho em ~8–12 épocas (FID ~33–35 em 21–32 min); de 12 a 20 épocas o ganho é pequeno (~5%, dentro do ruído) por +22 min.
+
+## Decisão a 128 px
+| Objetivo | Configuração | Tempo | FID |
+|---|---|---|---|
+| Rápido | batch 32, lr 2e-4, 8–12 épocas | 21–32 min | 33–35 |
+| **Melhor medido** | batch 32, lr 2e-4, **20 épocas** | ~54 min | 31,0 |
+
+Comando: `-m dcgan.train --resolution 128 --batch-size 32 --lr-g 2e-4 --lr-d 2e-4 --epochs 20`.
+
 ## Próximas fases
-- **128 px**: repetir lr e duração (≈ 2,6 min/época).
 - **Mistura de dados**: FID com `celeba` vs. `celeba+ffhq+...` no mesmo nº de passos (as outras bases ainda não foram baixadas).

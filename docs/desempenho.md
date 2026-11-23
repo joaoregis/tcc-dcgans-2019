@@ -20,6 +20,10 @@ batch 32: 1 215 · 64: 1 287 · 128: 1 313 img/s; 0,4–0,9 GB. Sobra muita VRAM
 ## Treino completo com o `Loader` (dados sintéticos em RAM, 64 px, batch 128)
 ~6 200 img/s → o carregamento de dados **não** é gargalo.
 
+## Medido em treino real (CelebA, EMA ligada, 2026-11-23)
+- 64 px, batch 128: ~6 000 img/s (≈ 35–48 s/época). 128 px: batch 128 ≈ 1 460 img/s, batch 64 ≈ 1 400, batch 32 ≈ 1 270 (≈ 140–160 s/época).
+- Em lotes maiores (256 a 64 px) o carregador de dados vira o limite (~4 800 img/s); ver `tuning.md`.
+
 ## Estimativas de tempo por época (CelebA, 202 599 imagens)
 - 64 px: ≈ 33 s/época; 128 px: ≈ 2,6 min/época. (TF 2.15 em CPU, antes: ≈ 14 min/época a 28 px.)
 
