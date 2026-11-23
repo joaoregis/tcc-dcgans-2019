@@ -27,6 +27,7 @@ dcgan/generate.py  usa o gerador treinado (gera imagens, exporta pesos)
 dcgan/latent.py    interpolação e aritmética de vetores no espaço latente
 dcgan/metrics.py    FID (qualidade das imagens)
 dcgan/tune.py       busca de hiperparâmetros com orçamento de tempo
+dcgan/curve.py      curva FID × época de uma execução (checkpoints)
 dcgan/bench.py      medição de velocidade (img/s) com dados sintéticos
 tests/              pytest
 ```

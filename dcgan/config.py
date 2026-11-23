@@ -42,7 +42,7 @@ class Config:
     beta2: float = 0.999
     label_smooth: float = 0.1     # rótulo "real" = 1 - label_smooth (suavização unilateral, como em 2019)
     ema: float = 0.999            # média móvel dos pesos do gerador (usada nas amostras); 0 = desliga
-    epochs: int = 10
+    epochs: int = 20
     max_minutes: float = 0.0      # 0 = sem limite de tempo
     # --- Desempenho ---
     amp: bool = True              # bfloat16 autocast

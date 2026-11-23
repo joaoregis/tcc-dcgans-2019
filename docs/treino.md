@@ -10,7 +10,7 @@
 | Otimização | `batch_size` | 128 | satura a GPU (ver `desempenho.md`) |
 | | `lr_g` / `lr_d` / `beta1` / `beta2` | 2e-4 / 2e-4 / 0,5 / 0,999 | valores do artigo; ajuste em `tuning.md` |
 | | `label_smooth` / `ema` | 0,1 / 0,999 | |
-| | `epochs` / `max_minutes` | 10 / 0 | `max_minutes` = limite de tempo (0 = sem) |
+| | `epochs` / `max_minutes` | 20 / 0 | `max_minutes` = limite de tempo (0 = sem) |
 | Desempenho | `amp` | sim | bfloat16 |
 | Saídas | `runs_dir`, `log_every`, `sample_every`, `ckpt_every` | `runs`, 100, 1000, 1 | |
 | | `resume`, `seed` | vazio, 0 | |

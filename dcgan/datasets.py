@@ -16,7 +16,6 @@ from typing import Callable, Optional
 from urllib.request import Request, urlopen
 
 import numpy as np
-import torch
 from PIL import Image
 from tqdm import tqdm
 
@@ -190,6 +189,7 @@ class Loader:
         return len(self.data) // self.batch_size
 
     def _produce(self, q):
+        import torch
         perm = self.rng.permutation(len(self.data))
         for k in range(len(self)):
             idx = np.sort(perm[k * self.batch_size:(k + 1) * self.batch_size])
@@ -197,6 +197,7 @@ class Loader:
         q.put(None)
 
     def __iter__(self):
+        import torch  # import tardio: os processos do `prepare` não precisam carregar o PyTorch (~1 GB cada)
         q = queue.Queue(maxsize=4)
         threading.Thread(target=self._produce, args=(q,), daemon=True).start()
         while (batch := q.get()) is not None:

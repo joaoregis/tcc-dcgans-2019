@@ -97,7 +97,7 @@ def train(cfg: Config, data=None):
                     G.train()
                 if deadline and time.time() - t0 > deadline:
                     break
-            if epoch % cfg.ckpt_every == 0 or (deadline and time.time() - t0 > deadline):
+            if epoch % cfg.ckpt_every == 0 or epoch == cfg.epochs or (deadline and time.time() - t0 > deadline):
                 torch.save({'G': G.state_dict(), 'D': D.state_dict(), 'ema': ema.model.state_dict() if ema else None,
                             'opt_g': opt_g.state_dict(), 'opt_d': opt_d.state_dict(), 'step': step, 'epoch': epoch,
                             'config': dataclasses.asdict(cfg)}, run / 'ckpt' / f'epoch_{epoch:03d}.pt')
