@@ -13,5 +13,7 @@
 | `test_loader_range_and_drop_last` (GPU) | lotes em [-1,1] na GPU, último incompleto descartado |
 | `test_train_smoke` (GPU) | 1 época sintética gera amostras, log e checkpoint |
 | `test_generate_from_checkpoint_and_export` (GPU) | gera de checkpoint e de arquivo exportado; mesma semente = mesmas imagens; exportado é menor |
+| `test_latent_seed_slerp_and_expr` | mesma seed = mesmo z; slerp preserva a norma e a linear encolhe; parser de expressões (`mean`, coeficientes, erro em `*` entre vetores) |
+| `test_latent_decode_shape` | `decode` + `interpolate` geram imagens em [0,1] |
 
 Não cobre: download real, qualidade das imagens, FID (requer baixar os pesos do Inception), `tune.py`/`bench.py` (verificados manualmente).

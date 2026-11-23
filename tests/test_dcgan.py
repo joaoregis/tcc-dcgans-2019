@@ -92,3 +92,26 @@ def test_generate_from_checkpoint_and_export(tmp_path):
         a, b = generate(g, c, 4, seed=1), generate(g, c, 4, seed=1)
         assert a.shape == (4, 3, 32, 32) and torch.equal(a, b) and 0 <= a.min() and a.max() <= 1
     assert (tmp_path / 'g.pt').stat().st_size < ck.stat().st_size
+
+
+def test_latent_seed_slerp_and_expr():
+    from dcgan.latent import eval_expr, interpolate, slerp, z_from_seed
+    a, b = z_from_seed(1, 100), z_from_seed(2, 100)
+    assert torch.equal(a, z_from_seed(1, 100)) and not torch.equal(a, b)          # mesma seed, mesmo z
+    path = interpolate(a, b, 5)
+    assert torch.allclose(path[0], a, atol=1e-5) and torch.allclose(path[-1], b, atol=1e-5)
+    mid_norm = slerp(a, b, 0.5).norm()
+    assert abs(mid_norm - (a.norm() + b.norm()) / 2) < 0.15 * a.norm()              # esférica preserva a norma
+    assert (0.5 * a + 0.5 * b).norm() < mid_norm                                      # linear encolhe
+    z, used = eval_expr('mean(1,2) - 3 + 0.5*1', 100)
+    expected = (a + b) / 2 - z_from_seed(3, 100) + 0.5 * a
+    assert torch.allclose(z, expected, atol=1e-5) and used == [1, 2, 3, 1]
+    with pytest.raises(ValueError):
+        eval_expr('mean(1,2) * 3', 100)
+
+
+def test_latent_decode_shape():
+    from dcgan.latent import decode, interpolate, z_from_seed
+    g = Generator(32, 100, 8).eval()
+    imgs = decode(g, interpolate(z_from_seed(1, 100), z_from_seed(2, 100), 4))
+    assert imgs.shape == (4, 3, 32, 32) and 0 <= imgs.min() and imgs.max() <= 1

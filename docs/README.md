@@ -24,6 +24,7 @@ dcgan/datasets.py   fontes de imagens → cache .npy → mistura → lotes na GP
 dcgan/models.py     Generator, Discriminator, EMA
 dcgan/train.py      passo de treino, loop, amostras, checkpoints
 dcgan/generate.py  usa o gerador treinado (gera imagens, exporta pesos)
+dcgan/latent.py    interpolação e aritmética de vetores no espaço latente
 dcgan/metrics.py    FID (qualidade das imagens)
 dcgan/tune.py       busca de hiperparâmetros com orçamento de tempo
 dcgan/bench.py      medição de velocidade (img/s) com dados sintéticos

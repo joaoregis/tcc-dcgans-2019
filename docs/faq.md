@@ -46,4 +46,4 @@ Em outro modelo, ou em outra época do mesmo treino, a mesma seed dá outro rost
 - **Multiplicar/dividir um vetor por outro, elemento a elemento**: não tem significado útil.
 - **Interpolação** `(1−t)·z₁ + t·z₂` (t de 0 a 1): transição suave entre dois rostos. Melhor com *slerp* (interpolação esférica), porque `z` ~N(0,I) fica numa "casca" de raio ≈ 10 e a média linear de dois vetores encolhe a norma.
 - Limites: o modelo **não é rotulado**; você descobre quais rostos têm óculos etc. olhando as amostras, e os atributos são parcialmente "emaranhados" (mexer em um pode mudar outros). Não há garantia, só tendência. Para controle explícito de atributos seria preciso um modelo condicional (cGAN) ou um classificador para achar direções no espaço latente.
-- **Estado**: ainda não implementado (`generate.py` só gera por seed). Candidato a próximo recurso.
+- **Como usar** (`dcgan/latent.py`, ver `usar-modelo.md`): `interpolate --seeds 42 7` e `arith --expr "mean(1,2,3) - mean(4,5,6) + mean(7,8,9)"`. Implementado e testado só com modelo sem treino; **resultados reais dependem do treino**.

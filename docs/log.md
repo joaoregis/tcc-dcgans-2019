@@ -1,5 +1,6 @@
 # Log de mudanças e decisões (mais recente primeiro)
 
+- 2026-11-22 — Adicionado `dcgan/latent.py` (interpolação slerp/linear e aritmética de vetores por seeds) com testes.
 - 2026-11-22 — Criado `docs/faq.md`; download do CelebA passou a usar 16 conexões em paralelo (`fetch_parallel`); pesos do FID baixados.
 - 2026-11-22 — Adicionado `dcgan/generate.py` (inferência/exportação do gerador) e `docs/usar-modelo.md`.
 - 2026-11-22 — **Refatoração profunda para PyTorch + CUDA.** Pacote `dcgan/` reescrito (`config`, `datasets`, `models`, `train`, `metrics`, `tune`, `bench`); remove TF/`compat.v1`. Decisões do usuário: PyTorch, resolução 64 depois 128, datasets (CelebA, FFHQ, CelebA-HQ, UTKFace/LFW) em pasta dedicada no HDD (`D:\datasets\faces`, via `local.env`). Medido: 6 300 img/s a 64 px (bf16 + channels_last, batch 128), 1 300 img/s a 128 px; `torch.compile` testado e descartado (+5% só em NCHW; quebra com channels_last). Adicionados EMA, cache `.npy`, mistura de fontes, FID e busca com orçamento de tempo. Docs reescritas (`como-funciona`, `migracao`, `desempenho`, `tuning`...). Nenhum dataset baixado ainda; tuning pendente.
