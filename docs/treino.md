@@ -28,4 +28,4 @@
   `d_loss → 0` (D venceu, G para de aprender) ou `g_loss` explodindo. Para qualidade objetiva use o FID (`tuning.md`).
 
 ## Estado
-Smoke tests passam e o treino roda a ~6 200 img/s em 64 px com dados sintéticos. **Treino real em dados reais ainda não executado.**
+Treinos reais concluídos no CelebA: 64 px (40 épocas, FID 26,5) e 128 px (20 épocas, FID 31,0). Velocidades e configurações em `desempenho.md` e `tuning.md`.
